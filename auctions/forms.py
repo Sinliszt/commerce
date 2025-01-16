@@ -4,7 +4,7 @@ from .models import AuctionListing, Bid, Comment
 class AuctionListingForm(forms.ModelForm):
     class Meta:
         model = AuctionListing
-        fields = ['title', 'description', 'starting_bid', 'image_url', 'category']
+        fields = ['title', 'description', 'startingbid', 'image_url', 'category']
 
 class BidForm(forms.ModelForm):
     class Meta:

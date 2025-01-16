@@ -1,22 +1,20 @@
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.decorators import login_required
+
+from django.contrib.auth import get_user_model
+
 from django.contrib.auth.models import User
+from django.contrib.auth.decorators import login_required
 from django.contrib import admin, messages
 from django.db import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import render, get_object_or_404
+from django.shortcuts import render, get_object_or_404, redirect
 from django.urls import reverse
 
 from .models import AuctionListing, Category, Bid, Comment
 from .forms import AuctionListingForm, BidForm, CommentForm
 
-admin.site.register(AuctionListing)
-admin.site.register(Category)
-admin.site.register(Bid)
-admin.site.register(Comment)
-
-
 def index(request):
+    listings = AuctionListing.objects.filter(is_active=True)
     return render(request, "auctions/index.html")
 
 def login_view(request):
@@ -59,7 +57,8 @@ def register(request):
 
         # Attempt to create new user
         try:
-            user = User.objects.create_user(username, email, password)
+            User = get_user_model()
+            user = User.objects.create_user(username=username, email=email, password=password)
             user.save()
         except IntegrityError:
             return render(request, "auctions/register.html", {
@@ -106,14 +105,14 @@ def watchlist(request, listing_id):
     else:
         listing.watchlist.add(request.user)
         messages.success(request, "Added to your watchlist")
-    return redirect(reverse("listing_page", args="listing_id"))
+    return redirect(reverse("listing_page", args=[listing_id]))
 
 @login_required
 def place_bid (request, listing_id):
     listing = get_object_or_404(AuctionListing, pk=listing_id)
     form=BidForm(request.POST)
     if form.is_valid():
-        bid=form.cleaned_data['amount']
+        bid = form.cleaned_data['amount']
         if bid > (listing.currentbid or listing.startingbid):
             listing.currentbid = bid
             listing.save()
@@ -127,9 +126,14 @@ def place_bid (request, listing_id):
 def close_auction (request, listing_id):
     listing = get_object_or_404(AuctionListing, pk=listing_id)
     if request.user == listing.owner:
+        highest_bid = listing.bids.order_by('-amount').first()
         listing.is_active = False
         listing.save()
-        messages.success(request, "Auction closed successfully")
+        messages.success(request, f"Auction closed. Winner: {
+            highest_bid.user.username 
+            if highest_bid 
+            else 'No bids placed'
+            }")
     return redirect(reverse("listing_page", args=[listing_id]))
 
 def categories(request):

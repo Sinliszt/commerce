@@ -19,7 +19,6 @@ class AuctionListing(models.Model):
     currentbid = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     image_url = models.URLField(blank=True, null=True)
     category = models.ForeignKey(Category, on_delete = models.SET_NULL, null= True, related_name="listings")
-    createdat = models.DateTimeField(auto_now_add = True)
     is_active = models.BooleanField(default = True)
     owner = models.ForeignKey(User, on_delete=models.CASCADE, related_name="listings")
     watchlist = models.ManyToManyField(User, blank=True, related_name="watchlist")
@@ -44,5 +43,3 @@ class Comment(models.Model):
 
     def __str__(self):
         return f"{self.commenter} commented on {self.listing.title}"
-
-
