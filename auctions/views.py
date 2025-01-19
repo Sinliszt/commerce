@@ -7,11 +7,11 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import admin, messages
 from django.db import IntegrityError
 from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import render, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404
 from django.urls import reverse
 
-from .models import AuctionListing, Category, Bid, Comment
-from .forms import AuctionListingForm, BidForm, CommentForm
+from .models import User, Listing, Bid, Comment
+from .forms import ListingForm, BidForm, CommentForm
 
 def index(request):
     listings = AuctionListing.objects.filter(is_active=True)
@@ -72,80 +72,66 @@ def register(request):
 @login_required
 def create_listing(request):
     if request.method == "POST":
-        form = AuctionListingForm(request.POST)
+        form = ListingForm(request.POST)
         if form.is_valid():
             listing=form.save(commit=False)
             listing.owner = request.user
-            listing.currentbid = form.cleaned_data['startingbid']
             listing.save()
             messages.success(request, "Your listing has been created")
-            return redirect(reverse("index"))
+            return HttpResponseRedirect(reverse("index"))
     else:
-        form = AuctionListingForm()
+        form = ListingForm()
     return render(request, "auctions/create.html", {
         "form": form
     })
 
 def listing_page(request, listing_id):
-    listing=get_object_or_404(AuctionListing, pk=listing_id)
-    bid_form = BidForm()
-    comment_form = CommentForm()
+    listing = get_object_or_404(Listing, pk=listing_id)
+    bis = listing.bids.all()
+    comments = listing.comments.all()
+    is_owner = request.user == listing.owner
+    has_won = request.user == listing.winner if listing.winner else False
+    on_watchlist = request.user.is_authenticated and listing in request.user.watchlist.all()
+
+    if request.method == "POST":
+        if "bid" in request.POST:
+            bid_form = BidForm(request.POST)
+            if bid_form.is_valid():
+                bid = bid_form.save(commet = False)
+                bid.listing = listing
+                bid.bidder = request.user
+                if bid.amount > listing.starting_bid and (not bids or bid.amount > max(b.amount for b in bids)):
+                    bid.save()
+                else:
+                    return render(request, "auctions/listing.html", {
+                        "listing": listing,
+                        "bids": bids,
+                        "comments": comments,
+                        "error": "Bid must be higher than current bid",
+                        "bid_form": bid_form,
+                        "comment_form": CommentForm(),
+                        "is_owner": is_owner,
+                        "has_won": has_won
+                    })
+            elif "close" in request.POST and is_owner:
+                listing.is_active = False
+                listing.winner = listing.highest_bidder()
+                listing.save()
+    
     return render(request, "auctions/listing.html", {
         "listing": listing,
-        "bid_form": bid_form,
-        "comment_form": comment_form
+        "bids": bids,
+        "comments": comments,
+        "bid_form": BidForm(),
+        "comment_form": CommentForm()
+        "is_owner": is_owner,
+        "has_won": has_won,
+        "on_watchlist": on_watchlist
     })
 
 @login_required
-def watchlist(request, listing_id):
-    listing = get_object_or_404(AuctionListing, pk=listing_id)
-    if request.user in listing.watchlist.all():
-        listing.watchlist.remove(request.user)
-        messages.info(request, "Removed from your watchlist")
-    else:
-        listing.watchlist.add(request.user)
-        messages.success(request, "Added to your watchlist")
-    return redirect(reverse("listing_page", args=[listing_id]))
-
-@login_required
-def place_bid (request, listing_id):
-    listing = get_object_or_404(AuctionListing, pk=listing_id)
-    form=BidForm(request.POST)
-    if form.is_valid():
-        bid = form.cleaned_data['amount']
-        if bid > (listing.currentbid or listing.startingbid):
-            listing.currentbid = bid
-            listing.save()
-            Bid.objects.create(amount=bid, bidder=request.user, listing=listing)
-            messages.success(request, "Bid placed successfully")
-        else:
-            messages.error(request, "Bid must be more than the current bid")
-        return redirect(reverse("listing_page", args=[listing_id]))
-
-@login_required
-def close_auction (request, listing_id):
-    listing = get_object_or_404(AuctionListing, pk=listing_id)
-    if request.user == listing.owner:
-        highest_bid = listing.bids.order_by('-amount').first()
-        listing.is_active = False
-        listing.save()
-        messages.success(request, f"Auction closed. Winner: {
-            highest_bid.user.username 
-            if highest_bid 
-            else 'No bids placed'
-            }")
-    return redirect(reverse("listing_page", args=[listing_id]))
-
-def categories(request):
-    categories = Category.objects.all()
-    return render(request, "auctions/category.html", {
-        "categories": categories
-    })
-
-def category_listing(request, category_name):
-    category = get_object_or_404(Category, name=category_name)
-    listings = AuctionListing.objects.filter(category=category, is_active = True)
-    return render(request, "auctions/category.html", {
-        "listings": listings,
-        "category": category
+def watchlist(request):
+    listings = request.user.watchlist.all()
+    return render(request, "auctions/watchlist.html" {
+        "listings": listings
     })

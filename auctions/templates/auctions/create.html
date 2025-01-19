@@ -2,11 +2,11 @@
 
 {% block body %}
 
-    <h2>Create Auction Listing</h2>
+    <h2>Create Listing</h2>
     <form method="post">
         {% csrf_token %}
         {{ from.as_p }}
-        <button type="submit">Create Listing</button>
+        <button type="submit">Create</button>
     </form>
-    {% endblock %}
+{% endblock %}
     
