@@ -43,7 +43,7 @@ class Bid(models.Model):
         return f"{self.bidder.username} bid {self.amount} on {self.listing.title}"
 
 class Comment(models.Model):
-    listing = models.ForeignKey(AuctionListing, on_delete = models.CASCADE, related_name="comments")
+    listing = models.ForeignKey(Listing, on_delete = models.CASCADE, related_name="comments")
     commenter = models.ForeignKey(User, on_delete = models.CASCADE, related_name="comments")
     content = models.TextField()
     created_at = models.DateTimeField(auto_now_add = True)

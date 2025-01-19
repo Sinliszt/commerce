@@ -4,12 +4,12 @@
     <h2>Active Listings</h2>
     <ul>
         {% for listing in listings %}
-        <li>
-            <a href="{% url 'listing_page' listing.id %}">{{ listing.title }}</a> - ${{ listing.currentbid|default:listing.startingbid }}
-            {% if listing.image_url %}
-            <img src="{{ listing.image_url }}" alt="{{ listing.title }}" width="100">
-            {% endif %}
-        </li>
+            <li>
+                <a href="{% url 'listing_page' listing.id %}">{{ listing.title }}</a> - ${{ listing.starting_bid }}
+                {% if listing.image_url %}
+                    <img src="{{ listing.image_url }}" alt="{{ listing.title }}" width="100">
+                {% endif %}
+            </li>
         {% endfor %}
     </ul>
 

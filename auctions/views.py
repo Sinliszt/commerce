@@ -14,7 +14,7 @@ from .models import User, Listing, Bid, Comment
 from .forms import ListingForm, BidForm, CommentForm
 
 def index(request):
-    listings = AuctionListing.objects.filter(is_active=True)
+    listings = Listing.objects.filter(is_active=True)
     return render(request, "auctions/index.html")
 
 def login_view(request):
@@ -96,6 +96,7 @@ def listing_page(request, listing_id):
     if request.method == "POST":
         if "bid" in request.POST:
             bid_form = BidForm(request.POST)
+            comment_form = CommentForm(request.POST)
             if bid_form.is_valid():
                 bid = bid_form.save(commet = False)
                 bid.listing = listing
@@ -109,7 +110,7 @@ def listing_page(request, listing_id):
                         "comments": comments,
                         "error": "Bid must be higher than current bid",
                         "bid_form": bid_form,
-                        "comment_form": CommentForm(),
+                        "comment_form": comment_form,
                         "is_owner": is_owner,
                         "has_won": has_won
                     })
@@ -123,7 +124,7 @@ def listing_page(request, listing_id):
         "bids": bids,
         "comments": comments,
         "bid_form": BidForm(),
-        "comment_form": CommentForm()
+        "comment_form": comment_form,
         "is_owner": is_owner,
         "has_won": has_won,
         "on_watchlist": on_watchlist
